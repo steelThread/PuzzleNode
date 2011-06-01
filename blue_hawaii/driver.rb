@@ -9,10 +9,10 @@ inventory = open('resources/vacation_rentals.json') do |f|
   end
 end
 
-# load the requested vacation period
+# load the vacation period
 period = open('resources/input.txt') do |f|  
-  input = f.gets.split('-')
-  Date.parse(input.first)..Date.parse(input.last)
+  dates = f.gets.split('-')
+  Date.parse(dates.first)..Date.parse(dates.last)
 end
 
 # construct a reservation finder
