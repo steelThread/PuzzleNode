@@ -2,15 +2,24 @@ module AlohaProperties
   SALES_TAX = 4.11416
 
   #
+  # Internal represenation of a rental sesion.
+  #
+  class Season
+    def initialize(from, to, rate)
+      @from, @to, @rate = from, to, rate
+    end
+  end    
+
+  #
   # Internal representation of a rentable property.
   #
   class Property
-    def initialize(name, seasons, cleaning_fee)
-      @name, @seasons, @cleaning_fee = name, seasons, cleaning_fee ||= 0      
+    def initialize(name, rate, seasons, cleaning_fee = 0)
+      @name, @rate, @seasons, @cleaning_fee = name, rate, seasons, cleaning_fee      
     end
     
     def available?(period)
-      true
+      true   
     end
   end
     
