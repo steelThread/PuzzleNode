@@ -7,7 +7,7 @@ inventory = open('resources/vacation_rentals.json') do |f|
   JSON.parse(f.gets).collect do |unit|
     if unit['seasons']
       seasons = unit['seasons'].collect do |season|
-        puts season
+        season = season.values[0]
         AlohaProperties::Season.new(season['start'], season['end'], season['rate'])    
       end
     end
