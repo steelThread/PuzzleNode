@@ -19,7 +19,7 @@ module AlohaProperties
     end
     
     def available?(period)
-      true   
+      true if @rate
     end
   end
     
