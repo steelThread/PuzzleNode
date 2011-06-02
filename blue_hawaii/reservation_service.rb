@@ -49,24 +49,29 @@ module ReservationService
   end
 
   #
-  # Internal representation of period (range like).
+  # Internal representation of period.
   #
-  class Period
-    def initialize(from, to)
-      @from, @to = from, to
+  class Period < Range
+    def days
+      (self.end - self.begin).to_i
     end
     
-    def days
-      (@to - @from).to_i
+    def included_days(period)
+      0
     end
   end
 
   #
-  # Internal representation of a rental season (range like).
+  # Internal representation of a rental season.
   #
-  class Season
+  class Season < Period
     def initialize(from, to, rate)
-      @from, @to, @rate = from, to, rate
+      super(from, to)
+      @rate = rate
+    end
+    
+    def price(period)
+      included_days(period) * @rate
     end
   end    
 
@@ -75,6 +80,7 @@ module ReservationService
   #
   class Property
     attr_reader :name
+     
     def initialize(name, rate, seasons, cleaning_fee)
       @name, @rate, @seasons, @cleaning_fee = name, rate, seasons, cleaning_fee      
     end
@@ -84,14 +90,16 @@ module ReservationService
     end
     
     def price(period)
-      if seasonal?
-        '$?.??'
-      else
-        price  = period.days * @rate
-        price += @cleaning_fee unless @cleaning_fee.nil?
-        price += price * SALES_TAX 
-        sprintf("$%.02f", price)
-      end
+      price = 
+        if seasonal?
+          @seasons.inject(0) {|sum, season| sum + season.price(period)}
+        else
+          period.days * @rate
+        end
+
+      price += @cleaning_fee unless @cleaning_fee.nil?
+      price += price * SALES_TAX 
+      sprintf("$%.02f", price)
     end
   end
 end
