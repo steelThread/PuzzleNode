@@ -21,7 +21,7 @@ module ReservationService
   # Loads the property inventory.
   #
   def self.load_inventory
-    open('sample_vacation_rentals.json') do |f| 
+    open('vacation_rentals.json') do |f| 
       JSON.parse(f.gets).collect do |unit|
         if unit['seasons']
           seasons = unit['seasons'].collect do |season|
@@ -42,12 +42,15 @@ module ReservationService
   # Loads the reservation period.
   #
   def self.load_period
-    open('sample_input.txt') do |f|  
+    open('input.txt') do |f|  
       dates = f.gets.split('-')
       Period.new(Date.parse(dates.first), Date.parse(dates.last))
     end
   end
 
+  #
+  # Internal representation of period (range like).
+  #
   class Period
     def initialize(from, to)
       @from, @to = from, to
