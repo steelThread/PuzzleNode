@@ -13,7 +13,7 @@ module ReservationService
     period    = load_period
     inventory = load_inventory
     inventory.each do |property|
-      listing.puts "#{property.name} #{property.price(period)}"    
+      listing.puts "#{property.name}: #{property.price(period)}"    
     end
   end
   
@@ -21,7 +21,7 @@ module ReservationService
   # Loads the property inventory.
   #
   def self.load_inventory
-    open('vacation_rentals.json') do |f| 
+    open('sample_vacation_rentals.json') do |f| 
       JSON.parse(f.gets).collect do |unit|
         if unit['seasons']
           seasons = unit['seasons'].collect do |season|
@@ -32,7 +32,8 @@ module ReservationService
         end
         
         rate = BigDecimal.new(unit['rate'][1..-1]) if unit['rate']
-        Property.new(unit['name'], rate, seasons, unit['cleaing fee'])      
+        cleaning_fee = BigDecimal.new(unit['cleaning fee'][1..-1]) if unit['cleaning fee']
+        Property.new(unit['name'], rate, seasons, cleaning_fee)      
       end
     end
   end
@@ -41,7 +42,7 @@ module ReservationService
   # Loads the reservation period.
   #
   def self.load_period
-    open('input.txt') do |f|  
+    open('sample_input.txt') do |f|  
       dates = f.gets.split('-')
       Period.new(Date.parse(dates.first), Date.parse(dates.last))
     end
@@ -84,8 +85,8 @@ module ReservationService
         '$?.??'
       else
         price  = period.days * @rate
+        price += @cleaning_fee unless @cleaning_fee.nil?
         price += price * SALES_TAX 
-        price += @cleaning_fee if @cleaning_fee
         sprintf("$%.02f", price)
       end
     end
