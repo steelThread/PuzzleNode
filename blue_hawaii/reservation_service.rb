@@ -8,9 +8,12 @@ module ReservationService
   # Run the reservation request. 
   #
   def self.run
-    lister = ReservationLister.new(load_inventory)
-    listing = File.open('reservation_listing.txt', 'w+')
-    listing.puts  lister.list(load_period)  
+    listing   = File.open('reservation_listing.txt', 'w+')
+    period    = load_period
+    inventory = load_inventory
+    inventory.each do |property|
+      listing.puts "#{property.name} #{property.price(period)}"    
+    end
   end
   
   #
@@ -48,10 +51,6 @@ module ReservationService
     def initialize(from, to, rate)
       @from, @to, @rate = from, to, rate
     end
-    
-    def contains(date)
-        
-    end
   end    
 
   #
@@ -63,23 +62,8 @@ module ReservationService
       @name, @rate, @seasons, @cleaning_fee = name, rate, seasons, cleaning_fee      
     end
     
-    def calculate(period)
-      puts period.end - period.start
-    end
-  end
-    
-  #
-  # Finds available properties in the inventory for a given period.
-  #
-  class ReservationLister
-    def initialize(inventory)
-      @inventory = inventory
-    end
-    
-    def list(period)
-      @inventory.collect do |property|
-        %{#{property.name}}    
-      end
+    def price(period)
+      '$0.00'
     end
   end
 end
