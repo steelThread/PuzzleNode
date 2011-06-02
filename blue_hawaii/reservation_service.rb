@@ -6,7 +6,7 @@ module ReservationService
   SALES_TAX = BigDecimal.new('.0411416')
   
   #
-  # List the price of the inventory for a given period. 
+  # Lists the prices of the properties for a given period. 
   #
   def self.list
     listing   = File.open('reservation_listing.txt', 'w+')
