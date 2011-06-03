@@ -112,8 +112,7 @@ module ReservationService
     
     def price(period, inclusive = false)
       price =  @periods.inject(0) {|sum, p| sum + p.included_days(period) * @rate}
-      price += @rate if inclusive
-      price
+      price += inclusive ? @rate : 0
     end
   end    
 
@@ -140,8 +139,7 @@ module ReservationService
           second_season = find_season(period.end)
           multi_season  = first_season != second_season
           sum  = first_season.price(period, multi_season)
-          sum += second_season.price(period) if multi_season
-          sum
+          sum += multi_season ? second_season.price(period) : 0
         else
           period.days * @rate
         end
