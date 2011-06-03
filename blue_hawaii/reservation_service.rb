@@ -3,7 +3,16 @@ require 'date'
 require 'json'
 
 #
-# Assumption: input range will be within the same year.
+# Assumptions: 
+#  - input range will be within the same year.
+#  - last day of range is exclusive when calculating a price.
+#
+#
+# Trick:
+#  - given the way i modeled the problem using ranges, when a 
+#    reservation range crosses multiple seasons ensure that
+#    account for the additional day that is lost using Date
+#    subtraction
 #
 module ReservationService
   SALES_TAX = BigDecimal.new('.0411416')
@@ -102,8 +111,8 @@ module ReservationService
   # Internal representation of a rentable property.
   #
   class Property
-    attr_reader :name
-     
+    attr_reader :name   
+    
     def initialize(name, rate, seasons, cleaning_fee)
       @name, @rate, @seasons, @cleaning_fee = name, rate, seasons, cleaning_fee      
     end
