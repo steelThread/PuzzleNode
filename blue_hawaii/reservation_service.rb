@@ -7,9 +7,8 @@ require 'json'
 #  - input range will be within the same year.
 #  - last day of range is exclusive when calculating a price.
 #
-#
 # Trick:
-#  - given the way i modeled the problem using ranges, when a 
+#  - given the way i modeled the problem (ranges), when a 
 #    reservation range crosses multiple seasons ensure that
 #    account for the additional day that is lost using Date
 #    subtraction
@@ -38,10 +37,11 @@ module ReservationService
         if unit['seasons']
           seasons = unit['seasons'].collect do |season|
             season = season.values[0]
-            first  = Date.strptime(season['start'], '%m-%d')
-            last   = Date.strptime(season['end'], '%m-%d')
-            rate   = BigDecimal.new(season['rate'][1..-1])
-            Season.new(first, last, rate)    
+            Season.new(
+              Date.strptime(season['start'], '%m-%d'),
+              Date.strptime(season['end'], '%m-%d'),
+              BigDecimal.new(season['rate'][1..-1])
+            )
           end
         end
         
@@ -71,20 +71,17 @@ module ReservationService
     end
     
     def included_days(period)
-      days = 
-        if member?(period.begin)
-          if member?(period.end)
-            period.days
-          else
-            (self.end - period.begin).to_i
-          end
-        elsif member?(period.end)
-          (period.end - self.begin).to_i
+      if member?(period.begin)
+        if member?(period.end)
+          period.days
         else
-          0
-        end      
-      puts "testing: #{period.to_s}   -   #{to_s}    - days: #{days}"
-      days
+          (self.end - period.begin).to_i
+        end
+      elsif member?(period.end)
+        (period.end - self.begin).to_i
+      else
+        0
+      end      
     end
   end
 
