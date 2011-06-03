@@ -5,12 +5,13 @@ require 'json'
 # assumptions: 
 #  - input range will be within the same year.
 #  - last day of range is exclusive when calculating a price.
+#  - a single input range will cross at most 2 seasons.
 #
 # trick:
 #  - given the way i modeled the problem (ranges), when a 
-#    reservation range crosses multiple seasons ensure to
-#    account for the additional day that is lost using Date
-#    subtraction
+#    reservation range crosses 2 seasons ensure to
+#    account for the additional day in the first season
+#    that is lost using Date subtraction
 #
 module ReservationService
   SALES_TAX = 0.0411416
@@ -19,9 +20,9 @@ module ReservationService
   # Lists the prices of the properties for a given period. 
   #
   def self.list
-    listing   = File.open('reservation_listing.txt', 'w+')
     period    = load_period
     inventory = load_inventory
+    listing   = File.open('reservation_listing.txt', 'w+')
     inventory.each do |property|
       listing.puts "#{property.name}: #{property.price(period)}"    
     end
@@ -31,7 +32,7 @@ module ReservationService
   # Loads the property inventory.
   #
   def self.load_inventory
-    open('sample_vacation_rentals.json') do |file| 
+    open('vacation_rentals.json') do |file| 
       JSON.parse(file.gets).collect do |unit|
         name         = unit['name']
         rate         = unit['rate'][1..-1].to_f if unit['rate']
@@ -62,7 +63,7 @@ module ReservationService
   # Loads the reservation period.
   #
   def self.load_period
-    open('sample_input.txt') do |file|  
+    open('input.txt') do |file|  
       dates = file.gets.split('-')
       Period.new(Date.parse(dates.first), Date.parse(dates.last))
     end
@@ -104,9 +105,15 @@ module ReservationService
         end
       @rate = rate
     end 
+
+    def include?(date)
+      @periods.inject(false) {|bool, p| bool or p.include?(date)}
+    end
     
-    def price(period)
-      @periods.inject(0) {|sum, p| sum + p.included_days(period) * @rate}
+    def price(period, inclusive = false)
+      price =  @periods.inject(0) {|sum, p| sum + p.included_days(period) * @rate}
+      price += @rate if inclusive
+      price
     end
   end    
 
@@ -120,14 +127,21 @@ module ReservationService
       @name, @rate, @seasons, @cleaning_fee = name, rate, seasons, cleaning_fee      
     end
     
-    def seasonal?
-      !@seasons.nil?
+    def seasonal?; !@seasons.nil?; end
+    
+    def find_season(date)
+      @seasons.select {|season| season.include?(date)}[0]
     end
     
     def price(period)
       price = 
         if seasonal?
-          @seasons.inject(0) {|sum, season| sum + season.price(period)}
+          first_season  = find_season(period.begin)
+          second_season = find_season(period.end)
+          multi_season  = first_season != second_season
+          sum  = first_season.price(period, multi_season)
+          sum += second_season.price(period) if multi_season
+          sum
         else
           period.days * @rate
         end
