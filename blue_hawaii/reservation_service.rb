@@ -1,20 +1,19 @@
-require 'bigdecimal'
 require 'date'
 require 'json'
 
 #
-# Assumptions: 
+# assumptions: 
 #  - input range will be within the same year.
 #  - last day of range is exclusive when calculating a price.
 #
-# Trick:
+# trick:
 #  - given the way i modeled the problem (ranges), when a 
 #    reservation range crosses multiple seasons ensure to
 #    account for the additional day that is lost using Date
 #    subtraction
 #
 module ReservationService
-  SALES_TAX = BigDecimal.new('.0411416')
+  SALES_TAX = 0.0411416
   
   #
   # Lists the prices of the properties for a given period. 
@@ -32,12 +31,13 @@ module ReservationService
   # Loads the property inventory.
   #
   def self.load_inventory
-    open('sample_vacation_rentals.json') do |f| 
-      JSON.parse(f.gets).collect do |unit|
-        rate         = BigDecimal.new(unit['rate'][1..-1]) if unit['rate']
+    open('sample_vacation_rentals.json') do |file| 
+      JSON.parse(file.gets).collect do |unit|
+        name         = unit['name']
+        rate         = unit['rate'][1..-1].to_f if unit['rate']
         seasons      = bind_seasons(unit['seasons'])
-        cleaning_fee = BigDecimal.new(unit['cleaning fee'][1..-1]) if unit['cleaning fee']
-        Property.new(unit['name'], rate, seasons, cleaning_fee)      
+        cleaning_fee = unit['cleaning fee'][1..-1].to_f if unit['cleaning fee']
+        Property.new(name, rate, seasons, cleaning_fee)      
       end
     end
   end
@@ -52,7 +52,7 @@ module ReservationService
         Season.new(
           Date.strptime(season['start'], '%m-%d'),
           Date.strptime(season['end'], '%m-%d'),
-          BigDecimal.new(season['rate'][1..-1])
+          season['rate'][1..-1].to_f
         )
       end
     end    
@@ -62,8 +62,8 @@ module ReservationService
   # Loads the reservation period.
   #
   def self.load_period
-    open('sample_input.txt') do |f|  
-      dates = f.gets.split('-')
+    open('sample_input.txt') do |file|  
+      dates = file.gets.split('-')
       Period.new(Date.parse(dates.first), Date.parse(dates.last))
     end
   end
@@ -133,7 +133,7 @@ module ReservationService
         end
 
       price += @cleaning_fee unless @cleaning_fee.nil?
-      price += price * SALES_TAX 
+      price *= 1 + SALES_TAX
       sprintf("$%.02f", price)
     end
   end
