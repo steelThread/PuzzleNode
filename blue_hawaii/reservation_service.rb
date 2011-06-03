@@ -2,6 +2,9 @@ require 'bigdecimal'
 require 'date'
 require 'json'
 
+#
+# Assumption: input range will be within the same year.
+#
 module ReservationService
   SALES_TAX = BigDecimal.new('.0411416')
   
@@ -21,13 +24,15 @@ module ReservationService
   # Loads the property inventory.
   #
   def self.load_inventory
-    open('vacation_rentals.json') do |f| 
+    open('sample_vacation_rentals.json') do |f| 
       JSON.parse(f.gets).collect do |unit|
         if unit['seasons']
           seasons = unit['seasons'].collect do |season|
             season = season.values[0]
+            first  = Date.strptime(season['start'], '%m-%d')
+            last   = Date.strptime(season['end'], '%m-%d')
             rate   = BigDecimal.new(season['rate'][1..-1])
-            Season.new(season['start'], season['end'], rate)    
+            Season.new(first, last, rate)    
           end
         end
         
@@ -42,7 +47,7 @@ module ReservationService
   # Loads the reservation period.
   #
   def self.load_period
-    open('input.txt') do |f|  
+    open('sample_input.txt') do |f|  
       dates = f.gets.split('-')
       Period.new(Date.parse(dates.first), Date.parse(dates.last))
     end
@@ -57,21 +62,39 @@ module ReservationService
     end
     
     def included_days(period)
-      0
+      days = 
+        if member?(period.begin)
+          if member?(period.end)
+            period.days
+          else
+            (self.end - period.begin).to_i
+          end
+        elsif member?(period.end)
+          (period.end - self.begin).to_i
+        else
+          0
+        end      
+      puts "testing: #{period.to_s}   -   #{to_s}    - days: #{days}"
+      days
     end
   end
 
   #
   # Internal representation of a rental season.
   #
-  class Season < Period
+  class Season
     def initialize(from, to, rate)
-      super(from, to)
+      @periods = 
+        if from > to
+          [Period.new(from, Date.parse('12/31')), Period.new(Date.parse('01/01'), to)]  
+        else
+          [Period.new(from, to)]
+        end
       @rate = rate
-    end
+    end 
     
     def price(period)
-      included_days(period) * @rate
+      @periods.inject(0) {|sum, p| sum + p.included_days(period) * @rate}
     end
   end    
 
