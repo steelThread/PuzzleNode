@@ -9,7 +9,7 @@ require 'json'
 #
 # Trick:
 #  - given the way i modeled the problem (ranges), when a 
-#    reservation range crosses multiple seasons ensure that
+#    reservation range crosses multiple seasons ensure to
 #    account for the additional day that is lost using Date
 #    subtraction
 #
@@ -34,22 +34,28 @@ module ReservationService
   def self.load_inventory
     open('sample_vacation_rentals.json') do |f| 
       JSON.parse(f.gets).collect do |unit|
-        if unit['seasons']
-          seasons = unit['seasons'].collect do |season|
-            season = season.values[0]
-            Season.new(
-              Date.strptime(season['start'], '%m-%d'),
-              Date.strptime(season['end'], '%m-%d'),
-              BigDecimal.new(season['rate'][1..-1])
-            )
-          end
-        end
-        
-        rate = BigDecimal.new(unit['rate'][1..-1]) if unit['rate']
+        rate         = BigDecimal.new(unit['rate'][1..-1]) if unit['rate']
+        seasons      = bind_seasons(unit['seasons'])
         cleaning_fee = BigDecimal.new(unit['cleaning fee'][1..-1]) if unit['cleaning fee']
         Property.new(unit['name'], rate, seasons, cleaning_fee)      
       end
     end
+  end
+  
+  #
+  # Binds the season hash to a Season.
+  #
+  def self.bind_seasons(seasons)
+    if seasons
+      seasons.collect do |season|
+        season = season.values[0]
+        Season.new(
+          Date.strptime(season['start'], '%m-%d'),
+          Date.strptime(season['end'], '%m-%d'),
+          BigDecimal.new(season['rate'][1..-1])
+        )
+      end
+    end    
   end
   
   #
