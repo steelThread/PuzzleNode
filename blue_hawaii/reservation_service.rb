@@ -29,24 +29,41 @@ module ReservationService
   end
   
   #
+  # Loads the reservation period.
+  #
+  def self.load_period
+    open('input.txt') do |file|  
+      dates = file.gets.split('-')
+      Period.new(Date.parse(dates.first), Date.parse(dates.last))
+    end
+  end
+
+  #
   # Loads the property inventory.
   #
   def self.load_inventory
     open('vacation_rentals.json') do |file| 
-      JSON.parse(file.gets).collect do |unit|
-        name         = unit['name']
-        rate         = unit['rate'][1..-1].to_f if unit['rate']
-        seasons      = bind_seasons(unit['seasons'])
-        cleaning_fee = unit['cleaning fee'][1..-1].to_f if unit['cleaning fee']
-        Property.new(name, rate, seasons, cleaning_fee)      
+      JSON.parse(file.gets).collect do |property|
+        decode_property(property)
       end
     end
   end
   
   #
-  # Binds the season hash to a Season.
+  # Decode the property hash into a Property.
   #
-  def self.bind_seasons(seasons)
+  def self.decode_property(property)
+    name         = property['name']
+    rate         = property['rate'][1..-1].to_f if property['rate']
+    seasons      = decode_seasons(property['seasons'])
+    cleaning_fee = property['cleaning fee'][1..-1].to_f if property['cleaning fee']
+    Property.new(name, rate, seasons, cleaning_fee)          
+  end
+  
+  #
+  # Decodes the season hash to a Season.
+  #
+  def self.decode_seasons(seasons)
     if seasons
       seasons.collect do |season|
         season = season.values[0]
@@ -59,16 +76,6 @@ module ReservationService
     end    
   end
   
-  #
-  # Loads the reservation period.
-  #
-  def self.load_period
-    open('input.txt') do |file|  
-      dates = file.gets.split('-')
-      Period.new(Date.parse(dates.first), Date.parse(dates.last))
-    end
-  end
-
   #
   # Internal representation of period.
   #
