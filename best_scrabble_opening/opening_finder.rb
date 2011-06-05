@@ -17,7 +17,8 @@ module OpeningFinder
     dictionary = input['dictionary']
     opening    = File.open('opening.txt', 'w+')     
     dictionary.each do |word|
-      board.solve(word) if rack.contains_word?(word)
+      next unless tiles = rack.tiles(word)
+      #board.solve(word) if rack.contains_word?(word)
     end  
   end
 
@@ -49,19 +50,7 @@ module OpeningFinder
   # Internal representation of a scrabble board.
   #
   class Board < Matrix
-    def solve(word)
-      solutions  = solve_rows(word)
-      solutions << solve_cols(word)
-    end
-    
-    def solve_rows(word)
-      puts "solving rows for #{word}"
-      []
-    end
-    
-    def solve_cols(word)
-      puts "solving cols for #{word}"
-      []
+    def write(file, solution)
     end
   end
   
@@ -86,7 +75,16 @@ module OpeningFinder
   class Rack
     def initialize(tiles)
       @tiles = tiles
+      @tiles_hash = Hash.new(
+        tiles.inject([]) do |v, tile|
+          v << [tile.letter, tile]
+        end
+      )
     end
+
+    def tiles(word) 
+      word.split(//).collect {|c| @tiles_hash[c]} if contains_word?(word)
+    end      
     
     def contains_word?(word)
       tiles = @tiles.collect {|tile| tile.letter}
@@ -109,7 +107,7 @@ module OpeningFinder
       @word, @score, @positions, @row = word, score, positions, row
     end
     
-    def rows?; @row; end
+    def row?; @row; end
     
     def <=>(other)
       @score <=> other.score
