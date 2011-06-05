@@ -1,10 +1,10 @@
 require 'json'
 require 'matrix'
+require 'set'
 
 #
-# Recursive search.
+# Linear algebra solution.
 #
-
 module OpeningFinder
   
   #
@@ -14,12 +14,15 @@ module OpeningFinder
     input      = JSON.parse(File.read('sample_input.json'))
     rack       = decode_rack(input['tiles'])
     board      = decode_board(input['board'])
-    dictionary = input['dictionary']
-    opening    = File.open('opening.txt', 'w+')     
-    dictionary.each do |word|
+    dictionary = input['dictionary'].to_set
+    solutions  = dictionary.collect do |word|
       next unless tiles = rack.tiles(word)
+      #puts board
       #board.solve(word) if rack.contains_word?(word)
-    end  
+    end 
+    
+    solution = File.open('solution.txt', 'w+')     
+    board.write(solutions.sort!.first, solution)
   end
 
   #
@@ -35,8 +38,7 @@ module OpeningFinder
   # Decode the tiles and return a Rack instance.
   #
   def self.decode_rack(tiles)
-    tiles = decode_tiles(tiles)
-    Rack.new(tiles.sort!)
+    Rack.new(decode_tiles(tiles).sort!)
   end
 
   #
@@ -50,7 +52,7 @@ module OpeningFinder
   # Internal representation of a scrabble board.
   #
   class Board < Matrix
-    def write(file, solution)
+    def write(solution, file)
     end
   end
   
@@ -76,17 +78,15 @@ module OpeningFinder
     def initialize(tiles)
       @tiles = tiles
       @tiles_hash = Hash.new(
-        tiles.inject([]) do |v, tile|
-          v << [tile.letter, tile]
-        end
+        tiles.collect {|tile| [tile.letter, tile]}
       )
     end
 
     def tiles(word) 
-      word.split(//).collect {|c| @tiles_hash[c]} if contains_word?(word)
+      word.split(//).collect {|c| @tiles_hash[c]} if include?(word)
     end      
     
-    def contains_word?(word)
+    def include?(word)
       tiles = @tiles.collect {|tile| tile.letter}
       word.each_char do |c|
         index = tiles.index(c)

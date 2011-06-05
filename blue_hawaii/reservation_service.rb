@@ -133,7 +133,7 @@ module ReservationService
       @name, @rate, @seasons, @cleaning_fee = name, rate, seasons, cleaning_fee      
     end
     
-    def seasonal?; !@seasons.nil?; end
+    def seasonal?; not @seasons.nil?; end
     
     def find_season(date)
       @seasons.select {|season| season.include?(date)}[0]
@@ -151,7 +151,7 @@ module ReservationService
           period.days * @rate
         end
 
-      price += @cleaning_fee unless @cleaning_fee.nil?
+      price += @cleaning_fee if @cleaning_fee
       price *= 1 + SALES_TAX
       sprintf("$%.02f", price)
     end
