@@ -3,7 +3,7 @@ require 'matrix'
 require 'set'
 
 #
-# Linear algebra solution.
+# Linear algebra solution .
 #
 module OpeningFinder
   
@@ -15,16 +15,15 @@ module OpeningFinder
     rack       = decode_rack(input['tiles'])
     board      = decode_board(input['board'])
     dictionary = input['dictionary'].to_set
-    solutions  = dictionary.collect do |word|
-      next unless tiles = rack.tiles(word)
-      #puts board
-      #board.solve(word) if rack.contains_word?(word)
+    solutions = []
+    dictionary.each do |word|
+      next unless rack.includes?(word)
+      solutions << solve(word, board, rack)
     end 
-    
-    solution = File.open('solution.txt', 'w+')     
-    board.write(solutions.sort!.first, solution)
+    solution = solutions.sort!.last
+    puts "word => #{solution.word} score => #{solution.score} orientation => #{solution.orientation}"
   end
-
+  
   #
   # Decode the board
   #
@@ -45,9 +44,58 @@ module OpeningFinder
   # Decode the array of hashes into an array of Tile instances.
   #
   def self.decode_tiles(tiles)
-    tiles.collect {|tile| Tile.new(tile[0], tile[1..-1])}
+    tiles.collect {|tile| Tile.new(tile[0], tile[1..-1].to_i)}
   end
   
+  #
+  # Find the best solution for a given word.
+  #
+  def self.solve(word, board, rack)
+    points    = rack.tiles(word).collect {|tile| tile.points}
+    solutions = []
+    row_solutions(board, points) do |score, x, y|
+      solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :horizontal) 
+    end
+    col_solutions(board, points) do |score, x, y|
+      solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :vertical) 
+    end
+    solutions.sort!.last
+  end
+  
+  #
+  # Returns all the dot products for the provided vector.
+  #
+  def self.row_solutions(matrix, points)
+    solutions = (0..matrix.column_size - points.size).collect do |offset|
+      matrix * Matrix.column_vector(
+        Array.new(offset, 0) + points + Array.new(matrix.column_size - offset - points.size, 0)
+      )
+    end 
+    
+    solutions.each_index do |x|
+      solutions[x].each_with_index do |score, y|
+        yield score, x, y
+      end    
+    end   
+  end
+
+  #
+  # Returns all the dot products for the provided vector.
+  #
+  def self.col_solutions(matrix, points)
+    solutions = (0..matrix.row_size - points.size).collect do |offset|
+      Matrix.row_vector(
+        Array.new(offset, 0) + points + Array.new(matrix.row_size - offset - points.size, 0)
+      ) * matrix
+    end 
+    
+    solutions.each_index do |x|
+      solutions[x].each_with_index do |score, y|
+        yield score, x, y
+      end    
+    end   
+  end
+
   #
   # Internal representation of a scrabble board.
   #
@@ -60,7 +108,7 @@ module OpeningFinder
   # Internal representation of a Tile.
   #
   class Tile
-    attr_accessor :letter
+    attr_accessor :letter, :points
         
     def initialize(letter, points)
       @letter, @points = letter, points
@@ -77,16 +125,16 @@ module OpeningFinder
   class Rack
     def initialize(tiles)
       @tiles = tiles
-      @tiles_hash = Hash.new(
+      @tiles_hash = Hash[
         tiles.collect {|tile| [tile.letter, tile]}
-      )
+      ]
     end
 
     def tiles(word) 
-      word.split(//).collect {|c| @tiles_hash[c]} if include?(word)
+      word.split(//).collect {|c| @tiles_hash[c]}
     end      
     
-    def include?(word)
+    def includes?(word)
       tiles = @tiles.collect {|tile| tile.letter}
       word.each_char do |c|
         index = tiles.index(c)
@@ -101,13 +149,11 @@ module OpeningFinder
   # A solution encapsulates the work, score and posistions found.
   #
   class Solution
-    attr_accessor :word, :score, :positions
+    attr_accessor :word, :score, :orientation
     
-    def initialize(word, score, positions, row = true)
-      @word, @score, @positions, @row = word, score, positions, row
+    def initialize(word, score, orientation)
+      @word, @score, @orientation = word, score, orientation
     end
-    
-    def row?; @row; end
     
     def <=>(other)
       @score <=> other.score
