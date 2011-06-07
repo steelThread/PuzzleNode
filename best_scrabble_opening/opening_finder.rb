@@ -11,7 +11,7 @@ module OpeningFinder
   # Find the best opening for a given board, dictionary and rack of tiles.
   #
   def self.find
-    input      = JSON.parse(File.read('sample_input.json'))
+    input      = JSON.parse(File.read('input.json'))
     rack       = decode_rack(input['tiles'])
     board      = decode_board(input['board'])
     dictionary = input['dictionary'].to_set
@@ -21,7 +21,8 @@ module OpeningFinder
       solutions << solve(word, board, rack)
     end 
     solution = solutions.sort!.last
-    puts "word => #{solution.word} score => #{solution.score} orientation => #{solution.orientation}"
+    puts "word => #{solution.word} score => #{solution.score} position => #{solution.position}"
+    board.write(solution, File.open('solution.txt', 'w+'))
   end
   
   #
@@ -54,11 +55,12 @@ module OpeningFinder
     points    = rack.tiles(word).collect {|tile| tile.points}
     solutions = []
     row_solutions(board, points) do |score, x, y|
-      solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :horizontal) 
+      solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :rank) 
     end
     col_solutions(board, points) do |score, x, y|
-      solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :vertical) 
+      solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :file) 
     end
+    
     solutions.sort!.last
   end
   
@@ -72,6 +74,7 @@ module OpeningFinder
       )
     end 
     
+    # each solution is a column vector
     solutions.each_index do |x|
       solutions[x].each_with_index do |score, y|
         yield score, x, y
@@ -89,9 +92,10 @@ module OpeningFinder
       ) * matrix
     end 
     
+    # each solution is a row vector
     solutions.each_index do |x|
-      solutions[x].each_with_index do |score, y|
-        yield score, x, y
+      solutions[x].each_with_index do |score, y, z|
+        yield score, z, x
       end    
     end   
   end
@@ -100,7 +104,26 @@ module OpeningFinder
   # Internal representation of a scrabble board.
   #
   class Board < Matrix
-    def write(solution, file)
+    def write(solution, output)
+      position = solution.position
+      word = solution.word.split(//)
+      printable = 
+        if position[:orientation] == :rank
+          rows = row_vectors.collect {|row| row.to_a}
+          row  = rows[position[:y]]
+          sub  = word + row[position[:x] + word.size..-1]
+          sub  = row[0..position[:x]-1] + sub unless position[:x] == 0
+          rows[position[:y]] = sub
+          rows
+        else
+          cols = column_vectors.collect {|col| col.to_a}
+          col  = cols[position[:x]]
+          sub  = word + col[position[:y] + word.size..-1]
+          sub  = col[0..position[:y]-1] + sub unless position[:y] == 0
+          cols[position[:x]] = sub
+          cols.transpose
+        end
+        printable.each {|row| output.puts row.join(' ')}
     end
   end
   
@@ -149,10 +172,10 @@ module OpeningFinder
   # A solution encapsulates the work, score and posistions found.
   #
   class Solution
-    attr_accessor :word, :score, :orientation
+    attr_accessor :word, :score, :position
     
-    def initialize(word, score, orientation)
-      @word, @score, @orientation = word, score, orientation
+    def initialize(word, score, position)
+      @word, @score, @position = word, score, position
     end
     
     def <=>(other)
