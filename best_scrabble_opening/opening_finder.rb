@@ -15,13 +15,11 @@ module OpeningFinder
     rack       = decode_rack(input['tiles'])
     board      = decode_board(input['board'])
     dictionary = input['dictionary'].to_set
-    solutions = []
-    dictionary.each do |word|
-      next unless rack.includes?(word)
-      solutions << solve(word, board, rack)
+    solutions  = dictionary.collect do |word|
+      solve(word, board, rack) if rack.includes?(word)
     end 
-    solution = solutions.sort!.last
-    puts "word => #{solution.word} score => #{solution.score} position => #{solution.position}"
+    
+    solution = solutions.compact!.sort!.last
     board.write(solution, File.open('solution.txt', 'w+'))
   end
   
