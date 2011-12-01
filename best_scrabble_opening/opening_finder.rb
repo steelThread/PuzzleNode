@@ -27,9 +27,7 @@ module OpeningFinder
     end
 
     def load
-      open('input.json') do |file|
-        JSON.parse(file.read)
-      end
+      open('input.json') {|file| JSON.parse(file.read)}
     end
 
     #
