@@ -6,96 +6,106 @@ require 'set'
 # Linear algebra solution .
 #
 module OpeningFinder
-  
-  #
-  # Find the best opening for a given board, dictionary and rack of tiles.
-  #
-  def self.find
-    input      = JSON.parse(File.read('input.json'))
-    rack       = decode_rack(input['tiles'])
-    board      = decode_board(input['board'])
-    dictionary = input['dictionary'].to_set
-    solutions  = dictionary.collect do |word|
-      solve(word, board, rack) if rack.includes?(word)
-    end 
-    
-    solution = solutions.compact!.sort!.last
-    board.write(solution, File.open('solution.txt', 'w+'))
-  end
-  
-  #
-  # Decode the board
-  #
-  def self.decode_board(rows)
-    Board.rows(
-      rows.collect {|row| row.split(' ').map(&:to_i)}
-    )
-  end
 
-  #
-  # Decode the tiles and return a Rack instance.
-  #
-  def self.decode_rack(tiles)
-    Rack.new(decode_tiles(tiles).sort!)
-  end
+  class << self
+    #
+    # Find the best opening for a given board, dictionary and rack of tiles.
+    #
+    def find
+      input      = load
+      rack       = to_rack(input['tiles'])
+      board      = to_board(input['board'])
+      dictionary = input['dictionary'].to_set
+      solutions  = dictionary.collect do |word|
+        solve(word, board, rack) if rack.includes?(word)
+      end
 
-  #
-  # Decode the array of hashes into an array of Tile instances.
-  #
-  def self.decode_tiles(tiles)
-    tiles.collect {|tile| Tile.new(tile[0], tile[1..-1].to_i)}
-  end
-  
-  #
-  # Find the best solution for a given word.
-  #
-  def self.solve(word, board, rack)
-    points    = rack.tiles(word).collect {|tile| tile.points}
-    solutions = []
-    row_solutions(board, points) do |score, x, y|
-      solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :rank) 
+      solution = solutions.compact!.sort!.last
+      open('solution.txt', 'w') do |file|
+        board.write(solution, file)
+      end
     end
-    col_solutions(board, points) do |score, x, y|
-      solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :file) 
+
+    def load
+      open('input.json') do |file|
+        JSON.parse(file.read)
+      end
     end
-    
-    solutions.sort!.last
-  end
-  
-  #
-  # Returns all the dot products for the provided vector.
-  #
-  def self.row_solutions(matrix, points)
-    solutions = (0..matrix.column_size - points.size).collect do |offset|
-      matrix * Matrix.column_vector(
-        Array.new(offset, 0) + points + Array.new(matrix.column_size - offset - points.size, 0)
+
+    #
+    # Decode the tiles and return a Rack instance.
+    #
+    def to_rack(tiles)
+      Rack.new(to_tiles(tiles).sort!)
+    end
+
+    #
+    # Decode the board
+    #
+    def to_board(rows)
+      Board.rows(
+        rows.collect {|row| row.split(' ').map(&:to_i)}
       )
-    end 
-    
-    # each solution is a column vector
-    solutions.each_index do |x|
-      solutions[x].each_with_index do |score, y|
-        yield score, x, y
-      end    
-    end   
-  end
+    end
 
-  #
-  # Returns all the dot products for the provided vector.
-  #
-  def self.col_solutions(matrix, points)
-    solutions = (0..matrix.row_size - points.size).collect do |offset|
-      Matrix.row_vector(
-        Array.new(offset, 0) + points + Array.new(matrix.row_size - offset - points.size, 0)
-      ) * matrix
-    end 
-    
-    # each solution is a row vector
-    solutions.each_index do |x|
-      solutions[x].each_with_index do |score, y, z|
-        yield score, z, x
-      end    
-    end   
+    #
+    # Decode the array of hashes into an array of Tile instances.
+    #
+    def to_tiles(tiles)
+      tiles.collect {|tile| Tile.new(tile[0], tile[1..-1].to_i)}
+    end
+
+    #
+    # Find the best solution for a given word.
+    #
+    def solve(word, board, rack)
+      points    = rack.tiles(word).collect {|tile| tile.points}
+      solutions = []
+      row_solutions(board, points) do |score, x, y|
+        solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :rank)
+      end
+      col_solutions(board, points) do |score, x, y|
+        solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :file)
+      end
+
+      solutions.sort!.last
+    end
+
+    #
+    # Returns all the dot products for the provided vector.
+    #
+    def row_solutions(matrix, points)
+      solutions = (0..matrix.column_size - points.size).collect do |offset|
+        matrix * Matrix.column_vector(
+          Array.new(offset, 0) + points + Array.new(matrix.column_size - offset - points.size, 0)
+        )
+      end
+
+      # each solution is a column vector
+      solutions.each_index do |x|
+        solutions[x].each_with_index do |score, y|
+          yield score, x, y
+        end
+      end
+    end
+
+    #
+    # Returns all the dot products for the provided vector.
+    #
+    def col_solutions(matrix, points)
+      solutions = (0..matrix.row_size - points.size).collect do |offset|
+        Matrix.row_vector(
+          Array.new(offset, 0) + points + Array.new(matrix.row_size - offset - points.size, 0)
+        ) * matrix
+      end
+
+      # each solution is a row vector
+      solutions.each_index do |x|
+        solutions[x].each_with_index do |score, y, z|
+          yield score, z, x
+        end
+      end
+    end
   end
 
   #
@@ -105,7 +115,7 @@ module OpeningFinder
     def write(solution, output)
       position = solution.position
       word = solution.word.split(//)
-      printable = 
+      printable =
         if position[:orientation] == :rank
           rows = row_vectors.collect {|row| row.to_a}
           row  = rows[position[:y]]
@@ -124,22 +134,22 @@ module OpeningFinder
         printable.each {|row| output.puts row.join(' ')}
     end
   end
-  
+
   #
   # Internal representation of a Tile.
   #
   class Tile
     attr_accessor :letter, :points
-        
+
     def initialize(letter, points)
       @letter, @points = letter, points
     end
-    
+
     def <=>(other)
       letter <=> other.letter
     end
   end
-  
+
   #
   # Internal representation of a Rack (holds the tiles).
   #
@@ -151,10 +161,10 @@ module OpeningFinder
       ]
     end
 
-    def tiles(word) 
+    def tiles(word)
       word.split(//).collect {|c| @tiles_hash[c]}
-    end      
-    
+    end
+
     def includes?(word)
       tiles = @tiles.collect {|tile| tile.letter}
       word.each_char do |c|
@@ -165,17 +175,17 @@ module OpeningFinder
       true
     end
   end
-  
+
   #
   # A solution encapsulates the work, score and posistions found.
   #
   class Solution
     attr_accessor :word, :score, :position
-    
+
     def initialize(word, score, position)
       @word, @score, @position = word, score, position
     end
-    
+
     def <=>(other)
       @score <=> other.score
     end
