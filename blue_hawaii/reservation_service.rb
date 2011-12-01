@@ -2,80 +2,83 @@ require 'date'
 require 'json'
 
 #
-# assumptions: 
+# assumptions:
 #  - input range will be within the same year.
 #  - last day of range is exclusive when calculating a price.
 #  - a single input range will cross at most 2 seasons.
 #
 # trick:
-#  - given the way i modeled the problem (ranges), when a 
+#  - given the way i modeled the problem (ranges), when a
 #    reservation range crosses 2 seasons ensure to
 #    account for the additional day in the first season
 #    that is lost using Date subtraction
 #
 module ReservationService
   SALES_TAX = 0.0411416
-  
-  #
-  # Lists the prices of the properties for a given period. 
-  #
-  def self.list
-    period    = load_period
-    inventory = load_inventory
-    listing   = File.open('reservation_listing.txt', 'w+')
-    inventory.each do |property|
-      listing.puts "#{property.name}: #{property.price(period)}"    
+
+  class << self
+    #
+    # Lists the prices of the properties for a given period.
+    #
+    def listings
+      period    = load_period
+      inventory = load_inventory
+      open('solution.txt', 'w') do |file|
+        inventory.each do |property|
+          file.puts "#{property.name}: #{property.price(period)}"
+        end
+      end
     end
-  end
-  
-  #
-  # Loads the reservation period.
-  #
-  def self.load_period
-    open('input.txt') do |file|  
-      dates = file.gets.split('-')
-      Period.new(Date.parse(dates.first), Date.parse(dates.last))
+
+    #
+    # Loads the reservation period.
+    #
+    def load_period
+      open('input.txt') do |file|
+        dates = file.gets.split(/-/)
+        Period.new(Date.parse(dates.first), Date.parse(dates.last))
+      end
+    end
+
+    #
+    # Loads the property inventory.
+    #
+    def load_inventory
+      open('vacation_rentals.json') do |file|
+        JSON.parse(file.gets).collect do |hash|
+          to_property(hash)
+        end
+      end
+    end
+
+    #
+    # Build a Property instance from a Hash.
+    #
+    def to_property(property)
+      name         = property['name']
+      rate         = property['rate'][1..-1].to_f if property['rate']
+      seasons      = to_seasons(property['seasons'])
+      cleaning_fee = property['cleaning fee'][1..-1].to_f if property['cleaning fee']
+      Property.new(name, rate, seasons, cleaning_fee)
+    end
+
+    #
+    # Build a Season instance array for the
+    #
+    def to_seasons(seasons)
+      if seasons
+        seasons.collect do |season|
+          season = season.values[0]
+          Season.new(
+            Date.strptime(season['start'], '%m-%d'),
+            Date.strptime(season['end'], '%m-%d'),
+            season['rate'][1..-1].to_f
+          )
+        end
+      end
     end
   end
 
-  #
-  # Loads the property inventory.
-  #
-  def self.load_inventory
-    open('vacation_rentals.json') do |file| 
-      JSON.parse(file.gets).collect do |property|
-        decode_property(property)
-      end
-    end
-  end
-  
-  #
-  # Decode the property hash into a Property.
-  #
-  def self.decode_property(property)
-    name         = property['name']
-    rate         = property['rate'][1..-1].to_f if property['rate']
-    seasons      = decode_seasons(property['seasons'])
-    cleaning_fee = property['cleaning fee'][1..-1].to_f if property['cleaning fee']
-    Property.new(name, rate, seasons, cleaning_fee)          
-  end
-  
-  #
-  # Decodes the season hash to a Season.
-  #
-  def self.decode_seasons(seasons)
-    if seasons
-      seasons.collect do |season|
-        season = season.values[0]
-        Season.new(
-          Date.strptime(season['start'], '%m-%d'),
-          Date.strptime(season['end'], '%m-%d'),
-          season['rate'][1..-1].to_f
-        )
-      end
-    end    
-  end
-  
   #
   # Internal representation of period.
   #
@@ -83,7 +86,7 @@ module ReservationService
     def days
       (self.end - self.begin).to_i
     end
-    
+
     def included_days(period)
       if member?(period.begin)
         if member?(period.end)
@@ -95,7 +98,7 @@ module ReservationService
         (period.end - self.begin).to_i
       else
         0
-      end      
+      end
     end
   end
 
@@ -104,46 +107,48 @@ module ReservationService
   #
   class Season
     def initialize(from, to, rate)
-      @periods = 
+      @periods =
         if from > to
-          [Period.new(from, Date.parse('12/31')), Period.new(Date.parse('01/01'), to)]  
+          [Period.new(from, Date.parse('12/31')), Period.new(Date.parse('01/01'), to)]
         else
           [Period.new(from, to)]
         end
       @rate = rate
-    end 
+    end
 
     def include?(date)
-      @periods.inject(false) {|bool, p| bool or p.include?(date)}
+      @periods.any? {|p| p.include?(date)}
     end
-    
+
     def price(period, inclusive = false)
       price =  @periods.inject(0) {|sum, p| sum + p.included_days(period) * @rate}
       price += inclusive ? @rate : 0
     end
-  end    
+  end
 
   #
   # Internal representation of a rentable property.
   #
   class Property
-    attr_reader :name   
-    
+    attr_reader :name
+
     def initialize(name, rate, seasons, cleaning_fee)
-      @name, @rate, @seasons, @cleaning_fee = name, rate, seasons, cleaning_fee      
+      @name, @rate, @seasons, @cleaning_fee = name, rate, seasons, cleaning_fee
     end
-    
-    def seasonal?; not @seasons.nil?; end
-    
-    def find_season(date)
-      @seasons.select {|season| season.include?(date)}[0]
+
+    def seasonal?
+      not @seasons.nil?
     end
-    
+
+    def find_season_for(date)
+      @seasons.find {|season| season.include?(date)}
+    end
+
     def price(period)
-      price = 
+      price =
         if seasonal?
-          first_season  = find_season(period.begin)
-          second_season = find_season(period.end)
+          first_season  = find_season_for(period.begin)
+          second_season = find_season_for(period.end)
           multi_season  = first_season != second_season
           sum  = first_season.price(period, multi_season)
           sum += multi_season ? second_season.price(period) : 0
@@ -158,4 +163,4 @@ module ReservationService
   end
 end
 
-ReservationService.list
+ReservationService.listings
