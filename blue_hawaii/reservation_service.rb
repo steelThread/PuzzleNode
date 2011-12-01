@@ -45,7 +45,7 @@ module ReservationService
     #
     def load_inventory
       open('vacation_rentals.json') do |file|
-        JSON.parse(file.gets).collect do |hash|
+        JSON.parse(file.read).collect do |hash|
           to_property(hash)
         end
       end
