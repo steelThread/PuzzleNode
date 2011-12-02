@@ -3,7 +3,7 @@ require 'matrix'
 require 'set'
 
 #
-# Linear algebra solution .
+# Linear algebra solution.
 #
 module OpeningFinder
 
@@ -57,7 +57,7 @@ module OpeningFinder
     # Find the best solution for a given word.
     #
     def solve(word, board, rack)
-      points    = rack.tiles(word).collect {|tile| tile.points}
+      points    = rack.tiles(word).collect(&:points)
       solutions = []
       row_solutions(board, points) do |score, x, y|
         solutions << Solution.new(word, score, :x => x, :y => y, :orientation => :rank)
@@ -175,7 +175,7 @@ module OpeningFinder
   end
 
   #
-  # A solution encapsulates the work, score and posistions found.
+  # A solution encapsulates the word, score and positions found.
   #
   class Solution
     attr_accessor :word, :score, :position
