@@ -1,13 +1,13 @@
 #
 # Notes:  Cheated on the valid user names
 #
-module SocialNetwork
+module SixDegrees
   MEMBERS = []
 
   class << self
     def solve
       tweets = load
-      tweets.each {|tweet| puts "user: #{tweet.user_name} mentions: #{tweet.mentions}"}
+      tweets.each {|tweet| puts "user: '#{tweet.user_name}' mentions: '#{tweet.mentions}'"}
       build_graph tweets
     end
 
@@ -25,7 +25,7 @@ module SocialNetwork
     #
     def to_tweet(line)
       parts = line.split(/ /)
-      Tweet.new(parts[0], parts[1..-1].join(' '))
+      Tweet.new(parts[0].chop, parts[1..-1].join(' '))
     end
 
     #
@@ -77,4 +77,4 @@ module SocialNetwork
   end
 end
 
-SocialNetwork.solve
+SixDegrees.solve
