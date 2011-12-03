@@ -10,7 +10,10 @@ module SixDegrees
       tweets = load
       graph  = graph tweets
       open('solution.txt', 'w') do |file|
-        walk graph, file
+        graph.each do |node|
+          puts node.name
+          walk node, file
+        end
       end
     end
 
@@ -57,13 +60,15 @@ module SixDegrees
     end
 
     #
-    # Walk the mutual mentions recursively.
+    # Recursively walk the mutual mentions keeping track of visited nodes.
     #
-    def walk(graph, output)
-      graph.each do |node|
-        puts "#{node.name}"
-        puts "#{node.mutual_mentions.collect {|m| m.name}.join(', ')}\n\n"
-      end
+    def walk(root, output, visited = [])
+      visited << root
+      nodes = root.mutual_mentions.to_a - visited
+      puts "#{nodes.collect(&:name).join(', ')}"
+      # nodes.each do |node|
+      #   walk node, output, visited unless visited.member? node
+      # end
     end
   end
 
@@ -71,7 +76,7 @@ module SixDegrees
   # Represents a tweet.
   #
   class Tweet
-    attr_reader :user_name, :message
+    attr_reader :user_name
 
     def initialize(raw)
       parts = raw.split(/ /)
