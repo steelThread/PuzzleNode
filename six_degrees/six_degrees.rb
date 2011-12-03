@@ -1,14 +1,19 @@
+require 'set'
+
 #
 # Notes:  Cheated on the valid user names
 #
 module SixDegrees
-  MEMBERS = []
 
   class << self
     def solve
       tweets = load
-      tweets.each {|tweet| puts "user: '#{tweet.user_name}' mentions: '#{tweet.mentions}'"}
-      build_graph tweets
+      graph  = build_graph_from tweets
+      graph.each do |member|
+        puts "#{member.name}"
+        puts "#{member.mentions.each.collect {|m| m.name}}"
+        puts "#{member.mentioned_by.each.collect {|m| m.name}}\n\n"
+      end
     end
 
     #
@@ -25,16 +30,40 @@ module SixDegrees
     #
     def to_tweet(line)
       parts = line.split(/ /)
-      Tweet.new(parts[0].chop, parts[1..-1].join(' '))
+      Tweet.new(parts.shift.chop, parts.join(' '))
     end
 
     #
-    # Process the tweets building the relationships.
+    # Process the tweets building the graph nodes & edges.
     #
-    def build_graph(tweets)
-      tweets.each do |tweet|
+    def build_graph_from(tweets)
+      nodes = build_nodes(tweets)
+      build_edges(nodes, tweets)
+    end
 
+    #
+    # Build the nodes as User instances
+    #
+    def build_nodes(tweets)
+      tweets.inject({}) do |nodes, tweet|
+        node = nodes[tweet.user_name]
+        nodes[tweet.user_name] = User.new(tweet.user_name) unless node
+        nodes
       end
+    end
+
+    #
+    # Build the graphs edges between the User nodes.
+    #
+    def build_edges(nodes, tweets)
+      tweets.each do |tweet|
+        node = nodes[tweet.user_name]
+        node.mentions.merge(tweet.mentions.collect {|name| nodes[name]})
+        tweet.mentions.each do |mention|
+          nodes[mention].mentioned_by << node
+        end
+      end
+      nodes.values.sort!
     end
   end
 
@@ -49,26 +78,22 @@ module SixDegrees
     end
 
     def mentions
-      @message.scan(/@\w+_*\w*/).collect{|word| word[1..-1]}
+      @message.scan(/@\w+_*\w*/).collect {|word| word[1..-1]}
     end
   end
 
   #
-  # Represents an account.
+  # Represents an node in the graph.
   #
   class User
-    attr_reader :name, :mentions, :mentioned_by
+    attr_accessor :name, :mentions, :mentioned_by
 
-    def initialize
-      @mentions, @mentioned_by = Set.new, Set.new
+    def initialize(name)
+      @name, @mentions, @mentioned_by = name, Set.new, Set.new
     end
 
-    def mentioned(user)
-      @mentions << user
-    end
-
-    def mentioned_by(user)
-      @mentioned_by << user
+    def mutual_mentions
+      @mentions & @mentioned_by
     end
 
     def <=>(other)
