@@ -8,11 +8,9 @@ module SixDegrees
   class << self
     def solve
       tweets = load
-      graph  = build_graph_from tweets
-      graph.each do |member|
-        puts "#{member.name}"
-        puts "#{member.mentions.each.collect {|m| m.name}}"
-        puts "#{member.mentioned_by.each.collect {|m| m.name}}\n\n"
+      graph  = graph tweets
+      open('solution.txt', 'w') do |file|
+        walk graph, file
       end
     end
 
@@ -21,30 +19,23 @@ module SixDegrees
     #
     def load
       open('sample_input.txt') do |file|
-        file.read.lines.collect {|line| to_tweet(line)}
+        file.read.lines.collect {|line| Tweet.new(line)}
       end
-    end
-
-    #
-    # Parse to a Tweet instance.
-    #
-    def to_tweet(line)
-      parts = line.split(/ /)
-      Tweet.new(parts.shift.chop, parts.join(' '))
     end
 
     #
     # Process the tweets building the graph nodes & edges.
     #
-    def build_graph_from(tweets)
-      nodes = build_nodes(tweets)
-      build_edges(nodes, tweets)
+    def graph(tweets)
+      nodes = nodes(tweets)
+      edges(nodes, tweets)
+      nodes.values.sort!
     end
 
     #
     # Build the nodes as User instances
     #
-    def build_nodes(tweets)
+    def nodes(tweets)
       tweets.inject({}) do |nodes, tweet|
         node = nodes[tweet.user_name]
         nodes[tweet.user_name] = User.new(tweet.user_name) unless node
@@ -55,7 +46,7 @@ module SixDegrees
     #
     # Build the graphs edges between the User nodes.
     #
-    def build_edges(nodes, tweets)
+    def edges(nodes, tweets)
       tweets.each do |tweet|
         node = nodes[tweet.user_name]
         node.mentions.merge(tweet.mentions.collect {|name| nodes[name]})
@@ -63,7 +54,16 @@ module SixDegrees
           nodes[mention].mentioned_by << node
         end
       end
-      nodes.values.sort!
+    end
+
+    #
+    # Walk the mutual mentions recursively.
+    #
+    def walk(graph, output)
+      graph.each do |node|
+        puts "#{node.name}"
+        puts "#{node.mutual_mentions.collect {|m| m.name}.join(', ')}\n\n"
+      end
     end
   end
 
@@ -73,8 +73,9 @@ module SixDegrees
   class Tweet
     attr_reader :user_name, :message
 
-    def initialize(user_name, message)
-      @user_name, @message = user_name, message
+    def initialize(raw)
+      parts = raw.split(/ /)
+      @user_name, @message = parts.shift.chop, parts.join(' ')
     end
 
     def mentions
@@ -93,7 +94,7 @@ module SixDegrees
     end
 
     def mutual_mentions
-      @mentions & @mentioned_by
+      (@mentions & @mentioned_by).sort
     end
 
     def <=>(other)
