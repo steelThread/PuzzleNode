@@ -9,10 +9,11 @@ module SixDegrees
     def solve
       tweets = load
       graph  = graph tweets
-      open('solution.txt', 'w') do |file|
+      open('solution.txt', 'w') do |out|
         graph.each do |node|
-          puts node.name
-          walk node, file
+          out.puts node.name
+          visit node.mutual_mentions, [node], out
+          out.puts
         end
       end
     end
@@ -21,7 +22,7 @@ module SixDegrees
     # Load the tweets.
     #
     def load
-      open('sample_input.txt') do |file|
+      open('complex_input.txt') do |file|
         file.read.lines.collect {|line| Tweet.new(line)}
       end
     end
@@ -54,7 +55,7 @@ module SixDegrees
         node = nodes[tweet.user_name]
         node.mentions.merge(tweet.mentions.collect {|name| nodes[name]})
         tweet.mentions.each do |mention|
-          nodes[mention].mentioned_by << node
+          nodes[mention].mentioned_by << node if nodes[mention]
         end
       end
     end
@@ -62,13 +63,12 @@ module SixDegrees
     #
     # Recursively walk the mutual mentions keeping track of visited nodes.
     #
-    def walk(root, output, visited = [])
-      visited << root
-      nodes = root.mutual_mentions.to_a - visited
-      puts "#{nodes.collect(&:name).join(', ')}"
-      # nodes.each do |node|
-      #   walk node, output, visited unless visited.member? node
-      # end
+    def visit(level, visited, out)
+      return if level.empty?
+      visited += level
+      out.puts level.collect(&:name).join(', ')
+      next_level = level.collect(&:mutual_mentions).flatten - visited
+      visit next_level.uniq, visited, out
     end
   end
 
