@@ -62,7 +62,7 @@ brook_metz
 
 leta
 darrel_skiles, leon_greenfelder
-brook_metz, mariana, delaney_ferry
+brook_metz, delaney_ferry, mariana
 
 madelyn
 nella_hackett
@@ -72,7 +72,7 @@ florence_vonrueden
 
 mariana
 darrel_skiles, leon_greenfelder
-brook_metz, leta, delaney_ferry
+brook_metz, delaney_ferry, leta
 
 nella_hackett
 madelyn
