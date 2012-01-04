@@ -33,11 +33,6 @@ module SixDegrees
       nodes = nodes(tweets)
       edges(nodes, tweets)
       nodes.values.sort!
-      nodes.values.sort.each do |node|
-        puts "node     -> #{node.name}"
-        puts "mentions -> #{node.mutual_mentions.collect{|m| m.name}.join(', ')}"
-        puts
-      end
     end
 
     #
@@ -70,6 +65,7 @@ module SixDegrees
     def visit(level, visited, out)
       return if level.empty?
       visited   += level
+      out.puts level.collect(&:name).join(', ')
       next_level = level.collect(&:mutual_mentions).flatten.sort - visited
       visit next_level.uniq, visited, out
     end
